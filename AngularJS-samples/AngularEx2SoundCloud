@@ -1,0 +1,251 @@
+@using xx.Web.Models.ViewModels
+@model ItemViewModel<string>
+
+@{
+    ViewBag.Title = "KVite";
+    Layout = "../Shared/_LayoutThemed.cshtml";
+}
+
+@section styles  {
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-iconic-font/2.2.0/css/material-design-iconic-font.min.css">
+
+}
+
+<div class="card clearfix z-depth-2">
+    <div class="card-header">
+        <h2>Search through SoundCloud<small>Enter your favorite song name to begin</small></h2>
+    </div>
+
+    <div class="card-body card-padding p-10" ng-controller="soundCloudSearchController as main">
+        <form class="row p-15" role="form" name="searchForm" ng-submit="main.submitSearch(searchForm.$valid)" novalidate>
+
+            <div class="col-xs-6">
+                <div class="input-group fg-float">
+                    <span class="input-group-addon"><i class="zmdi zmdi-soundcloud zmdi-hc-2x"></i></span>
+                    <div class="fg-line">
+                        <input type="text" class="form-control" ng-model="main.searchItem">
+                        <label class="fg-label">Enter your search here</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xs-6">
+                <button type="submit" class="btn palette-Pink bg waves-effect">Submit</button>
+            </div>
+        </form>
+
+        <ul class="list-unstyled" ng-repeat="searchResult in main.searchResults" ng-model="main.searchResultsObjects">
+            <li class="media">
+                <img class="d-flex align-self-center mr-3" ng-src="{{searchResult.artwork_url}}" alt="No artwork available">
+                <div class="media-body">
+                    <h5 class="mt-0 mb-1">{{searchResult.title}}</h5>
+                    <my-audio>
+                        <audio ng-hide="main.audioPlayerHide" class="player">
+                            <source ng-src="{{searchResult.stream_url + main.clientId | trustUrl}}">
+                            Your browser does not support the audio tag.
+                        </audio>
+                        <button type="button" ng-show="searchResult.previewButton" ng-click="searchResult.previewButton = false" class="btn palette-Pink-A200 btn-sm m-t-10 bg waves-effect play">Preview Track</button>
+                        <button type="button" ng-show="!searchResult.previewButton" ng-click="searchResult.previewButton = true" class="btn palette-Pink-A200 btn-sm m-t-10 bg waves-effect pause">Stop Track</button>
+                        <button type="button" ng-click="main.useTrack(searchResult)" class="btn palette-Pink-A200 btn-sm m-t-10 bg waves-effect">Use Track</button>
+                    </my-audio>
+                </div>
+            </li>
+        </ul>
+
+        <div class="row p-20">
+            <button ng-show="main.prevResultsPage" ng-click="main.goToPrevPage()" class="btn palette-Pink-A200 btn-sm m-t-10 bg waves-effect">Previous</button>
+            <button ng-show="main.nextHref" ng-click="main.loadNextPage()" class="btn palette-Pink-A200 btn-sm m-t-10 bg waves-effect pull-right">Next</button>
+        </div>
+        
+    </div>
+</div>
+
+@section scripts {
+
+    <script src="~/Scripts/xx/services/xx.services.notifications.js"></script>
+    <script src="~/Scripts/xx/services/xx.services.soundcloud.js"></script>
+
+    <script type="text/javascript">
+
+        (function () {
+            'use strict';
+
+            angular.module(APPNAME)
+                .controller('soundCloudSearchController', soundCloudSearchController);
+
+            angular.module(APPNAME)
+                .filter('trustUrl', trustUrl);
+
+            trustUrl.$inject = ['$sce'];
+
+            function trustUrl($sce) {
+                return function (url) {
+                    return $sce.trustAsResourceUrl(url);
+                };
+            };
+
+            angular.module(APPNAME)
+                .directive('myAudio', function () {
+                    return {
+                        restrict: 'E',
+                        link: function (scope, element, attr) {
+                            var player = element.children('.player')[0];
+                            element.children('.play').on('click', function () {
+                                player.play();
+                            });
+                            element.children('.pause').on('click', function () {
+                                player.pause();
+                            });
+                        }
+                    };
+                });
+
+            soundCloudSearchController.$inject = ['$scope', '$baseController', 'appConfig', 'soundCloudService', 'notificationsService', '$sce', '$window'];
+
+            function soundCloudSearchController($scope, $baseController, appConfig, soundCloudService, notificationsService, $sce, $window) {
+                var vm = this;
+                vm.scope = $scope;
+                vm.appConfig = appConfig;
+                vm.soundCloudService = soundCloudService;
+                vm.notificationsService = notificationsService;
+                vm.submitSearch = _submitSearch;
+                vm.loadNextPage = _loadNextPage;
+                vm.loadNextPageExisting = _loadNextPageExisting;
+                vm.goToPrevPage = _goToPrevPage;
+                vm.useTrack = _useTrack;
+                vm.searchResults = null;
+                vm.audioPlayerHide = true;
+                vm.clientId = '?client_id=' + vm.appConfig.item;
+                vm.nextResultsPage = null;
+                vm.prevResultsPage = false;
+                vm.nextHref = null;
+                vm.moreResultsUrl = null;
+                vm.prevNextSearchResults = [];
+                var pageCounter = null;
+
+                $baseController.merge(vm, $baseController);
+                vm.notify = vm.soundCloudService.getNotifier($scope);
+
+                //success & error functions
+                vm.onSearchSuccess = _onSearchSuccess;
+                vm.onSearchError = _onSearchError;
+                vm.onNextPageSuccess = _onNextPageSuccess;
+                vm.onNextPageError = _onNextPageError;
+
+                function _submitSearch(isValid) {
+                    if (isValid) {
+                        vm.soundCloudService.search(vm.searchItem, vm.appConfig.item, _onSearchSuccess, _onSearchError);
+                        pageCounter = -1;
+                    } else {
+                        console.log("search form is invalid");
+                    };
+                };
+
+                function _onSearchSuccess(data) {
+                    console.log(data);
+                    vm.searchResults = data.collection;
+                    vm.prevNextSearchResults.push(vm.searchResults);
+                    pageCounter = pageCounter + 1;
+
+                    //loop thru search results and add default button to all items
+                    for (var i = 0; i < vm.searchResults.length; i++) {
+                        vm.searchResults[i].previewButton = true;
+                    };
+
+                    if (data.next_href) {
+                        vm.nextHref = true;
+                        vm.moreResultsUrl = data.next_href;
+                    };
+
+                    vm.notify();
+                };
+
+                function _onSearchError(data) {
+                    console.log(data);
+                    vm.notificationsService.error('Something went wrong with that search, please try again');
+                };
+
+                function _onNextPageSuccess(data) {
+                    console.log(data);
+                    vm.searchResults = data.collection;
+                    vm.prevNextSearchResults.push(vm.searchResults);
+
+                    //loop thru search results and add default button to all items
+                    for (var i = 0; i < vm.searchResults.length; i++) {
+                        vm.searchResults[i].previewButton = true;
+                    };
+
+                    if (data.next_href) {
+                        vm.nextHref = true;
+                        vm.moreResultsUrl = data.next_href;
+                    };
+
+                    //scroll to top
+                    $window.scrollBy(0, -$window.pageYOffset);
+
+                    vm.notify();
+                };
+
+                function _onNextPageError(data) {
+                    console.log(data);
+                };
+
+                //'Use Track' button, more functionality to be added later(?)
+                function _useTrack(searchResult) {
+                    vm.notificationsService.success('Track' + ' ' + searchResult.stream_url + ' ' + 'was successfully added!');
+                };
+
+                function _loadNextPage() {
+                    vm.prevResultsPage = true;
+                    pageCounter = pageCounter + 1;
+
+                    //determine whether to grab new results from ajax call or pull existing results from array
+                    if (pageCounter > vm.prevNextSearchResults.length - 1) {
+                        if (vm.moreResultsUrl) {
+                            vm.nextHref = true;
+                            vm.soundCloudService.nextPageResults(vm.moreResultsUrl, _onNextPageSuccess, _onNextPageError);
+                        }; 
+                    } else {
+                        _loadNextPageExisting();
+                    };
+                };
+
+                function _loadNextPageExisting() {
+                    vm.searchResults = vm.prevNextSearchResults[pageCounter];
+
+                    //loop thru search results and add default button to all items
+                    for (var i = 0; i < vm.searchResults.length; i++) {
+                        vm.searchResults[i].previewButton = true;
+                    };
+
+                    //scroll to top
+                    $window.scrollBy(0, -$window.pageYOffset);
+                };
+
+                function _goToPrevPage() {
+                    vm.nextHref = true;
+                    //show/hide 'previous' page link
+                    if (pageCounter > 1) {
+                        vm.prevResultsPage = true;
+                    } else {
+                        vm.prevResultsPage = false;
+                    };
+
+                    pageCounter = pageCounter - 1;
+                    vm.searchResults = vm.prevNextSearchResults[pageCounter];
+
+                    //loop thru search results and add default button to all items
+                    for (var i = 0; i < vm.searchResults.length; i++) {
+                        vm.searchResults[i].previewButton = true;
+                    };
+
+                    //scroll to top
+                    $window.scrollBy(0, -$window.pageYOffset);
+                };
+            };
+        })();
+
+    </script>
+
+}
