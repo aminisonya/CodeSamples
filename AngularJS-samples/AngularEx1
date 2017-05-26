@@ -1,0 +1,431 @@
+@{
+    ViewBag.Title = "KVite";
+    Layout = "../Shared/_LayoutThemed.cshtml";
+}
+
+@section styles {
+
+    <link href="~/ThemeAssets/vendors/bower_components/bootstrap-select/dist/css/bootstrap-select.css" rel="stylesheet" />
+
+    <style>
+        #audioStartTime {
+            margin-bottom: 10px;
+        }
+    </style>
+
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-iconic-font/2.2.0/css/material-design-iconic-font.min.css">
+<!-- Each section of the page should be in its own card. Simple pages will have only one section. -->
+<div class="card">
+    <div class="card-header">
+        <h2>Create Your Announcement Here!</h2>
+    </div>
+
+    <div class="card-body card-padding" ng-controller="slideshowsController as main">
+        <form name="main.slideshowsForm" ng-submit="main.submitForm(main.slideshowsForm.$valid)" novalidate>
+
+            <div class="form-group">
+                <label for="eventsList">Choose an optional event for your announcement:</label>
+                <select selectpicker="" ng-options="event.id as event.eventName for event in main.allEvents" class="selectpicker" ng-model="main.eventsList" ng-change="main.eventSelect()">
+                    <option value="">Pick an event</option>
+                </select>
+            </div>
+
+            <div ng-show="main.event.name" ng-hide="main.event.id == null" class="row p-b-10">
+                <div class="col-xs-6">
+                    <h2>{{main.event.name}}</h2>
+                    <ul style="list-style-type: none;">
+                        <li style="list-style-type: none;"><i class="zmdi zmdi-calendar-alt zmdi-hc-fw"></i> <span>{{main.event.startTime | date : "EEEE MMM d, y h:mm a"}}</span></li>
+                        <li style="list-style-type: none;"><i class="zmdi zmdi-calendar zmdi-hc-fw"></i> <span>{{main.event.endTime | date : "EEEE MMM d, y h:mm a"}}</span></li>
+                        <li style="list-style-type: none;"><i class="zmdi zmdi-time zmdi-hc-fw"></i><span>{{main.event.isAllDayEvent | yesNo}}</span></li>
+                        <li style="list-style-type: none;"><i class="zmdi zmdi-pin"></i><span>{{main.event.address.line1}} {{main.event.address.line2}}</span></li>
+                        <li style="list-style-type: none;"><span>{{main.event.address.city}}, {{main.event.address.stateProvince}} {{main.event.address.postalCode}}</span></li>
+                    </ul>
+                    <a href="/events/{{main.event.id}}/edit" type="button" class="btn btn-primary">Edit</a>
+                </div>
+                <div class="col-xs-6">
+                    <img ng-src="{{main.event.imageURL}}" class="img-responsive" style="max-height: 200px;">
+                </div>
+            </div>
+
+            <div class="form-group" ng-class="{'has-error' : main.slideshowsForm.title.$invalid && main.slideshowFormErrors }">
+                <label for="slideshowTitle">Title</label>
+                <input type="text" class="form-control" name="title" ng-model="main.slideshow.title" required>
+                <small class="help-block">A descriptive name to be displayed above the slideshow</small>
+                <span ng-show="main.slideshowsForm.title.$invalid && main.slideshowFormErrors" class="help-block" style="color: red; display: block;">A title is required for your announcement</span>
+                
+            </div>
+            <div class="form-group">
+                <label for="teaserText">Teaser Text</label>
+                <input type="text" class="form-control" name="teaserText" ng-model="main.slideshow.teaserText">
+                <small class="help-block">An optional message included in all texts and emails</small>
+            </div>
+            <div class="form-group" ng-class="{'has-error' : main.slideshowsForm.standardMessageNote.$invalid && main.slideshowFormErrors }">
+                <label for="standardMessageNote">Message Note</label>
+                <input type="text" class="form-control" name="standardMessageNote" ng-model="main.slideshow.standardMessageNote" required>
+                <small class="help-block">The default message included in all texts and emails, which may be customized per recipient</small>
+                <span ng-show="main.slideshowsForm.standardMessageNote.$invalid && main.slideshowFormErrors" class="help-block" style="color: red; display: block;">A message  is required</span>
+            </div>
+            @*File Upload Component*@
+            <div ng-include="'/Scripts/app/_fileUpload/FileUploadTemplate.html'"></div>
+
+            <div class="form-group">
+                <div id="audioStartTime">Select a start time (Optional)</div>
+                <label class="audio-min">
+                    Minutes
+                    <input type="number" class="form-control audio-min" ng-model="main.startMin" min="0" />
+                </label>
+                <label class="audio-sec">
+                    Seconds
+                    <input type="number" class="form-control audio-sec" ng-change="main.startSec = (main.startSec > 59)? 59 : main.startSec" ng-model="main.startSec" />
+                </label>
+            </div>
+
+            <button type="submit" class="btn palette-Pink bg waves-effect" ng-show="main.appConfig.item == null && main.pleaseWait == false">Create New Announcement</button>
+            <button type="submit" class="btn palette-Pink bg waves-effect" ng-show="main.appConfig.item != null && main.pleaseWait == false">Update Announcement</button>
+            <button type="button" class="btn palette-Pink bg waves-effect" id="btnSubmitted" disabled="disabled" ng-show="main.pleaseWait == true">Please Wait<i class="zmdi zmdi-refresh zmdi-hc-fw icon-custom zmdi-hc-spin"></i></button>
+            <button type="button" class="btn palette-Pink bg waves-effect" ng-click="main.resetForm()">Reset Form</button>
+            <br /><br />
+            <p ng-show="main.slideshow && main.slideshow.id"><a href="/slideshows/{{main.slideshow.id}}/manage">Go to Slide Manager</a></p>
+        </form>
+    </div>
+</div>
+
+
+@section scripts {
+    <script src="~/Scripts/xx/services/xx.services.slideshows.js"></script>
+    <script src="~/Scripts/xx/services/xx.services.notifications.js"></script>
+    <script src="~/Scripts/xx/services/xx.services.uploads.js"></script>
+    <script src="~/Scripts/xx/services/xx.services.events.js"></script>
+    <script src="/ThemeAssets/vendors/bower_components/bootstrap-select/dist/js/bootstrap-select.min.js"></script>
+    <script src="~/ThemeAssets/vendors/fileinput/fileinput.min.js"></script>
+    <script src="~/Scripts/app/_fileUpload/FileUploadController.js"></script>
+    <script src="~/Scripts/xx/services/xx.services.soundcloud.js"></script>
+    <script src="~/Scripts/app/soundcloud/soundcloudController.js"></script>
+
+    <script type="text/javascript">
+
+        (function () {
+            'use strict';
+
+            angular.module(APPNAME)
+                .controller('slideshowsController', slideshowsController);
+
+            angular.module(APPNAME).filter('yesNo', function () {
+                return function (input) {
+                    return input ? 'This is an all day event' : 'This is not an all day event';
+                }
+            });
+
+            slideshowsController.$inject = [
+                '$scope',
+                '$baseController',
+                "slideshowsService",
+                "notificationsService",
+                "appConfig",
+                "UploadsService",
+                "eventsService"
+            ];
+
+            function slideshowsController(
+                $scope,
+                $baseController,
+                slideshowsService,
+                notificationsService,
+                appConfig,
+                UploadsService,
+                eventsService
+                ) {
+
+                var vm = this;
+
+                vm.slideshowsService = slideshowsService;
+                vm.notificationsService = notificationsService;
+                vm.appConfig = appConfig;
+                vm.UploadsService = UploadsService;
+                vm.eventsService = eventsService;
+                vm.resetForm = _resetForm;
+                vm.submitForm = _submitForm;
+                vm.eventSelect = _eventSelect;
+
+                //controller-level variables
+                var firstClick = true;
+                vm.slideshowFormErrors = false;
+                var resetFormOrig = null;
+                vm.allEvents = null;
+                vm.eventId = null;
+                var newSlideshow = null;
+                vm.eventsList = null;
+                vm.valid = false;
+                vm.pleaseWait = false;
+                vm.slideshow = {};
+                vm.startTime = null;
+                vm.startMin = 0;
+                vm.startSec = 0;
+
+                //success and error functions
+                vm.createSuccess = _createSuccess;
+                vm.createError = _createError;
+                vm.updateSuccess = _updateSuccess;
+                vm.updateError = _updateError;
+                vm.getByIdSuccess = _getByIdSuccess;
+                vm.getByIdError = _getByIdError;
+                vm.getAllEventsSuccess = _getAllEventsSuccess;
+                vm.getAllEventsError = _getAllEventsError;
+                vm.getEventSuccess = _getEventSuccess;
+                vm.getEventError = _getEventError;
+
+                vm.scope = $scope;
+                $baseController.merge(vm, $baseController);
+                vm.notify = vm.slideshowsService.getNotifier($scope);
+
+                vm.scope.$on('$includeContentLoaded', _initializeUpload);
+                vm.scope.$on('fileUrlValidity.change', _setUrlInvalid);
+                vm.scope.$on('fileUpload.available', _performSubmit);
+                vm.scope.$on('fileUpload.error', _stopRequest);           
+
+                render();
+
+                function render() {
+                    //sets radio button to "keep" on page load
+                    if (vm.appConfig.eventId != null) {
+                        vm.eventsList = vm.appConfig.eventId;
+                        vm.eventSelect();
+                    } else {
+                        vm.eventsList = null;
+                    };
+
+                    vm.audioRadioBox = 'keep';
+
+                    vm.eventsService.getByUser(_getAllEventsSuccess, _getAllEventsError);
+
+                    if (vm.appConfig.item != null) {
+                        vm.slideshowsService.getById(vm.appConfig.item, null, _getByIdSuccess, _getByIdError);
+                    };
+                };
+
+                function _eventSelect() {
+                    if (vm.eventsList) {
+                        vm.slideshow.eventId = vm.eventsList;
+
+                        vm.eventsService.geteventbyid(vm.slideshow.eventId, _getEventSuccess, _getEventError);
+                    } else {
+                        vm.event = null;
+                    }
+                };
+
+                function _resetForm() {
+                    vm.slideshowFormErrors = false;
+                    if (vm.appConfig.item != null) {
+                        vm.slideshow = _createSlideshow(resetFormOrig);
+                        vm.eventsList = vm.slideshow.eventId;
+                        vm.eventsService.geteventbyid(vm.slideshow.eventId,
+                            _getEventSuccess, _getEventError);
+                        vm.scope.$broadcast('fileUpload.change', vm.slideshow.audioTrackUrl);
+                    } else {
+                        vm.slideshow = {};
+                        vm.startSec = 0;
+                        vm.startMin = 0;
+                        if (vm.appConfig.eventId != null) {
+                            vm.eventsList = vm.appConfig.eventId;
+                            _eventSelect();
+                        } else {
+                            vm.eventsList = null;
+                            vm.event = null;
+                        }
+                        vm.scope.$broadcast('fileUpload.change', null);
+                    }
+                };
+
+                function _createSlideshow(slideshow) {
+
+                    var newSlideshow = {
+                        eventId: slideshow.eventId,
+                        title: slideshow.title,
+                        teaserText: slideshow.teaserText,
+                        standardMessageNote: slideshow.standardMessageNote,
+                        audioTrackUrl: slideshow.audioTrackUrl,
+                        audioTrackOffsetSeconds: slideshow.audioTrackOffsetSeconds
+                    }
+                    if (slideshow.id) {
+                        newSlideshow.id = slideshow.id
+                    }
+                    if (newSlideshow.audioTrackOffsetSeconds > 59) {
+                        vm.startSec = newSlideshow.audioTrackOffsetSeconds % 60;
+                        vm.startMin = Math.floor(newSlideshow.audioTrackOffsetSeconds / 60);
+                    }
+                    else {
+                        vm.startSec = newSlideshow.audioTrackOffsetSeconds;
+                    }
+                    
+                    return newSlideshow;
+                }
+
+                function _submitForm(isValid) {
+                    vm.valid = isValid;
+                    vm.pleaseWait = true;
+
+                    vm.scope.$broadcast('fileUpload.needed');
+                };
+
+                function _performSubmit(e, url) {
+                    if (vm.valid) {
+                        vm.slideshow.audioTrackUrl = url;
+                        vm.slideshow.audioTrackOffsetSeconds = ((vm.startMin * 60) + vm.startSec)
+
+                        if (firstClick) {
+                            vm.slideshowsService.create(vm.slideshow,
+                                _createSuccess, _createError);
+                        } else {
+                            vm.slideshowsService.update(vm.slideshow.id,
+                                vm.slideshow, _updateSuccess, _updateError);
+                        };
+                    } else {
+                        console.log("form submitted with invalid data :(");
+                        vm.slideshowFormErrors = true;
+                        vm.pleaseWait = false;
+                    };
+                };
+
+                function _stopRequest(e) {
+                    vm.notify(function () {
+                        vm.pleaseWait = false;
+                    });
+                }
+
+                function _createSuccess(jqXhr) {
+                    console.log(jqXhr);
+                    firstClick = false;
+                    vm.pleaseWait = false;
+                    vm.slideshow.id = jqXhr.item;
+                    vm.appConfig.item = jqXhr.item;
+
+                    resetFormOrig = _createSlideshow(vm.slideshow);
+
+                    vm.notificationsService.success("Announcement was successfully created!");
+
+                    vm.scope.$broadcast('fileUpload.change', vm.slideshow.audioTrackUrl);
+                    vm.notify();
+                };
+
+                function _createError(jqXhr) {
+                    console.log(jqXhr);
+                    vm.notificationsService.error("Something went wrong while trying to create this announcement");
+
+                    vm.notify(function () {
+                        vm.pleaseWait = false;
+                    });
+                };
+
+                function _updateSuccess(jqXhr) {
+                    console.log(jqXhr);
+                    vm.pleaseWait = false;
+
+                    vm.notify();
+                    vm.notificationsService.success("Announcement was successfully updated!");
+
+                    resetFormOrig = _createSlideshow(vm.slideshow);
+
+                    vm.scope.$broadcast('fileUpload.change', vm.slideshow.audioTrackUrl);
+                };
+
+                function _updateError(jqXhr) {
+                    console.log(jqXhr);
+                    vm.notificationsService.error("Something went wrong while trying to update this announcement");
+
+                    vm.notify(function () {
+                        vm.pleaseWait = false;
+                    });
+                };
+
+                function _getByIdSuccess(jqXhr) {
+
+                    vm.notify(function () {                        
+                        console.log(jqXhr);
+                        firstClick = false;
+                        resetFormOrig = _createSlideshow(jqXhr.item);
+                        vm.eventsList = jqXhr.item.eventId;
+                        _eventSelect();
+                        vm.slideshow = _createSlideshow(jqXhr.item);
+                        vm.time = jqXhr.item.audioTrackOffsetSeconds
+                    });
+                    if (vm.time > 59) {
+                        vm.startSec = vm.time % 60;
+                        vm.startMin = Math.floor(vm.time / 60);
+                        //console.log(vm.startSec);
+                        //console.log(vm.startMin);
+                    }
+                    _initializeUpload();
+                };
+
+                function _getByIdError(jqXhr) {
+                    console.log(jqXhr);
+                };
+
+                function _initializeUpload() {
+                    vm.scope.$broadcast(
+                        'fileUpload.mode',
+                        'audio',
+                        vm.slideshow.audioTrackUrl,
+                        true
+                    );
+                }
+
+                function _setUrlInvalid(e) {
+                    vm.pleaseWait = false;
+                    vm.slideshowFormErrors = true;
+                }
+
+                function _getAllEventsSuccess(jqXhr) {
+                    console.log(jqXhr);
+
+                    vm.notify(function () {
+                        vm.allEvents = jqXhr.items;
+                    });
+                };
+
+                function _getAllEventsError(jqXhr) {
+                    console.log(jqXhr);
+                };
+
+                function _getEventSuccess(jqXhr) {
+                    console.log(jqXhr);
+
+                    vm.notify(function () {
+                        vm.event = {
+                            name: jqXhr.item.eventName,
+                            startTime: jqXhr.item.eventStartTime,
+                            endTime: jqXhr.item.eventEndTime,
+                            id: jqXhr.item.id,
+                            isAllDayEvent: jqXhr.item.isAllDayEvent,
+                            imageURL: jqXhr.item.imageURL,
+                            address: {
+                                line1: jqXhr.item.address.line1,
+                                line2: jqXhr.item.address.line2,
+                                city: jqXhr.item.address.city,
+                                stateProvince: jqXhr.item.address.stateProvince.stateProvinceCode,
+                                postalCode: jqXhr.item.address.postalCode
+                            }
+                        }
+                    });
+                };
+
+                function _getEventError(jqXhr) {
+                    console.log(jqXhr);
+                };
+            };
+
+        })();
+
+    </script>
+}
+
+@section pageInitScripts {
+
+    <script src="~/Scripts/ng/ng-bootstrap-select.js"></script>
+
+    <script>
+        appname.moduleOptions.extraModuleDependencies.push('ng-bootstrap-select')
+    </script>
+}
