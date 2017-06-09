@@ -1,0 +1,326 @@
+@using xx.Web.Models.ViewModels
+@model ItemViewModel<int>
+
+@{
+    ViewBag.Title = "Create your event here";
+    Layout = "../Shared/_LayoutThemed.cshtml";
+}
+
+<!-- Each section of the page should be in its own card. Simple pages will have only one section. -->
+<div class="card">
+    <div class="card-header">
+        <h2></h2>
+    </div>
+
+    <div class="card-body card-padding">
+
+
+        <form class="form-horizontal" role="form" id="createEventForm">
+            <div class="card-header">
+                <h2>Event Details <small>Add in your event's details here</small></h2>
+            </div>
+
+            <div class="card-body card-padding">
+                <div class="form-group">
+                    <label for="inputEventName" class="col-sm-2 control-label">Event Name</label>
+                    <div class="col-sm-10">
+                        <div class="fg-line">
+                            <input type="text" class="form-control input-sm" id="inputEventName" name="inputEventName" placeholder="Name your event!">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="inputEventDescription" class="col-sm-2 control-label">Description</label>
+                    <div class="col-sm-10">
+                        <div class="fg-line">
+                            <input type="text" class="form-control input-sm" id="inputEventDescription" name="inputEventDescription" placeholder="Event description...">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="inputImageUrl" class="col-sm-2 control-label">Image URL</label>
+                    <div class="col-sm-10">
+                        <div class="fg-line">
+                            <input type="url" class="form-control input-sm" id="inputImageUrl" name="inputImageUrl" placeholder="Place your image URL here!">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-1 col-sm-8">
+                        <div class="toggle-switch" data-ts-color="pink">
+                            <label for="inputAllowResponse" class="ts-label">Allow recipient to reply with "Maybe"</label>
+                            <input id="inputAllowResponse" name="inputAllowResponse" type="checkbox" hidden="hidden">
+                            <label for="inputAllowResponse" class="ts-helper"></label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dates">
+                    <div class="col-sm-4">
+                        <p class="c-black f-500 m-b-20">Event Start Date/Time</p>
+
+                        <div class="input-group form-group">
+                            <span class="input-group-addon"><i class="zmdi zmdi-calendar"></i></span>
+                            <div class="dtp-container fg-line" id="dateTimePicker1">
+                                <input type='text' class="form-control date-time-picker" placeholder="eg: 00/00/0000 00:00:00" maxlength="19" id="inputEventStart" name="inputEventStart">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-4">
+                        <p class="c-black f-500 m-b-20">Event End Date/Time</p>
+
+                        <div class="input-group form-group">
+                            <span class="input-group-addon"><i class="zmdi zmdi-calendar"></i></span>
+                            <div class="dtp-container fg-line" id="dateTimePicker2">
+                                <input type='text' class="form-control date-time-picker" placeholder="eg: 00/00/0000 00:00:00" maxlength="19" id="inputEventEnd" name="inputEventEnd">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="col-sm-4 m-b-20">
+                    <div class="toggle-switch" data-ts-color="pink">
+                        <label for="inputAllDayEvent" class="ts-label">All Day Event</label>
+                        <input id="inputAllDayEvent" name="inputAllDayEvent" type="checkbox" hidden="hidden">
+                        <label for="inputAllDayEvent" class="ts-helper"></label>
+                    </div>
+                </div>
+
+                <div class="col-sm-4 m-b-20">
+                    <div class="toggle-switch" data-ts-color="pink">
+                        <label for="inputEventSearch" class="ts-label">Make Event Searchable</label>
+                        <input id="inputEventSearch" name="inputEventSearch" type="checkbox" hidden="hidden">
+                        <label for="inputEventSearch" class="ts-helper"></label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10">
+                        <button type="submit" class="btn btn-primary btn-sm firstClick" id="submitEvent">Submit Your Event</button>
+                        <button type="button" class="btn btn-danger" id="resetForm">Reset</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+
+</div>
+
+@section Scripts{
+
+
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.37/js/bootstrap-datetimepicker.min.js"></script>
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+
+    <script src="~/Scripts/xx/services/xx.services.events.js"></script>
+    <script src="~/Scripts/xx/services/xx.services.notifications.js"></script>
+
+    <script type="text/javascript">
+        xx.page.startUp = function () {
+            xx.page.startValidation();
+
+            $("#submitEvent").on("click", xx.page.handlers.postEvent);
+
+            $("#resetForm").on("click", xx.page.handlers.resetButton);
+
+            $("#inputAllDayEvent").on("click", xx.page.handlers.allDayEventSwitch);
+
+            if (xx.page.config != null) {
+                var theEventId = xx.page.config.item;
+                xx.services.events.geteventbyid(theEventId, xx.page.handlers.onSuccessId, xx.page.handlers.onErrorId);
+            }
+
+            xx.page.dateTimePickerSetting();
+        };
+
+        xx.page.dateTimePickerSetting = function () {
+            $("#dateTimePicker1").datetimepicker();
+            $("#dateTimePicker2").datetimepicker({
+                useCurrent: false
+            });
+
+            $("#dateTimePicker1").on("dp.change", xx.page.minEndDate);
+            $("#dateTimePicker2").on("dp.change", xx.page.minEndDate);
+        };
+
+        xx.page.minEndDate = function (e) {
+            var minEndDate = null;
+            var maxStartDate = null;
+            minEndDate = new Date(e.date);
+            $("#dateTimePicker2").data("DateTimePicker").minDate(e.date);
+            $("#dateTimePicker1").data("DateTimePicker").maxDate(maxStartDate);
+            maxStartDate = new Date(e.date);
+            $("#dateTimePicker1").data("DateTimePicker").maxDate(e.date);
+            $("#dateTimePicker2").data("DateTimePicker").minDate(minEndDate);
+        };
+
+        xx.page.handlers.allDayEventSwitch = function () {
+            if ($("#inputAllDayEvent").prop("checked")) {
+                $("#inputEventStart").data("DateTimePicker").format("MM/DD/YYYY");
+                $("#inputEventEnd").data("DateTimePicker").format("MM/DD/YYYY");
+            } else {
+                $("#inputEventStart").data("DateTimePicker").format("MM/DD/YYYY LT");
+                $("#inputEventEnd").data("DateTimePicker").format("MM/DD/YYYY LT");
+            };
+        };
+
+        xx.page.resetInfo = null;
+
+        xx.page.handlers.onSuccessId = function (data) {
+            console.log(data);
+            xx.page.resetInfo = data.item;
+            xx.page.fillInForm(data.item);
+        };
+
+        xx.page.handlers.onErrorId = function (data) {
+            console.log(data);
+        };
+
+        xx.page.fillInForm = function (editEvent) {
+            $("#inputEventName").val(editEvent.eventName);
+            $("#inputEventDescription").val(editEvent.eventDescription);
+            $("#inputImageUrl").val(editEvent.imageURL);
+            $("#inputAllowResponse").prop("checked", editEvent.allowResponseMaybe);
+            $("#inputEventStart").val(editEvent.eventStartTime);
+            $("#inputEventEnd").val(editEvent.eventEndTime);
+            $("#inputAllDayEvent").prop("checked", editEvent.isAllDayEvent);
+            $("#inputEventSearch").prop("checked", editEvent.isSearchable);
+        };
+
+        xx.page.startValidation = function () {
+            console.log("validation working");
+            //  set defaults for the entire plugin
+            jQuery.validator.setDefaults({
+                debug: true
+            });
+
+            $.validator.addMethod('isLaterThan', function (value, element, param) {
+                return new Date(value) > new Date($(param).val());
+
+            }, "End date must be after start date!");
+
+            $("#createEventForm").validate({
+                rules: {
+                    "inputEventName": {
+                        required: true
+                    },
+                    "inputEventDescription": {
+                        required: true
+                    },
+                    "inputImageUrl": {
+                        required: false
+                    },
+                    "inputEventStart": {
+                        required: true,
+                        date: true
+                    },
+                    "inputEventEnd": {
+                        required: true,
+                        date: true,
+                        isLaterThan: "#inputEventStart"
+                    }
+                },
+
+                messages: {
+                    "inputEventName": {
+                        required: "Event must have a name",
+                    },
+                    "inputEventDescription": {
+                        required: "Event must include a description",
+                    },
+                    "inputEventStart": {
+                        required: "Event must include a start date & time"
+                    },
+                    "inputEventEnd": {
+                        required: "Event must include an end date & time"
+                    }
+                }
+            });
+        };
+
+        xx.page.newEvent = function () {
+
+            var newEvent = {
+                EventName: $("#inputEventName").val(),
+                EventDescription: $("#inputEventDescription").val(),
+                ImageURL: $("#inputImageUrl").val(),
+                AllowResponseMaybe: $("#inputAllowResponse").prop("checked"),
+                EventStartTime: $("#inputEventStart").val(),
+                EventEndTime: $("#inputEventEnd").val(),
+                IsAllDayEvent: $("#inputAllDayEvent").prop("checked"),
+                IsSearchable: $("#inputEventSearch").prop("checked"),
+                AddressId: 1
+            };
+            return newEvent;
+        };
+
+        xx.page.handlers.postEvent = function (event) {
+            event.preventDefault();
+
+            var newEvent1 = xx.page.newEvent();
+
+            if ($("#createEventForm").valid()) {
+
+                if (xx.page.config == null) {
+                    xx.services.events.create(newEvent1, xx.page.handlers.onEventCreateSuccess, xx.page.handlers.onEventCreateError);
+                }
+                else {
+                    console.log("else happening");
+                    newEvent1.Id = xx.page.config.item;
+                    xx.page.resetInfo = xx.page.config;
+                    xx.services.events.update(xx.page.config.item, newEvent1, xx.page.handlers.onSuccessUpdate, xx.page.handlers.onErrorUpdate);
+                }
+            };
+        };
+
+        xx.page.handlers.resetButton = function (event) {
+            event.preventDefault();
+            console.log("reset button working");
+
+            if (xx.page.config == null) {
+                $("#createEventForm").trigger("reset");
+            } else {
+                xx.page.fillInForm(xx.page.resetInfo);
+            }
+        };
+
+        xx.page.handlers.onEventCreateSuccess = function (data) {
+            console.log("ajax success is working!!!");            
+            xx.page.config = data;
+            xx.page.onEventCreateSuccess();
+        };
+
+        xx.page.onEventCreateSuccess = function () {
+            xx.services.notifications.success("Event successfully created!");
+        };
+
+        xx.page.handlers.onEventCreateError = function (data) {
+            console.log(data);
+            xx.page.onEventCreateError();
+        };
+
+        xx.page.onEventCreateError = function () {
+            xx.services.notifications.error("There was an error creating the event");
+        };
+
+        xx.page.handlers.onSuccessUpdate = function (data) {
+            console.log(data);
+            xx.services.notifications.success("Event successfully updated!");
+        };
+
+        xx.page.handlers.onErrorUpdate = function (data) {
+            console.log(data);
+            xx.services.notifications.error("There was an error updating the event");
+        };
+
+    </script>
+
+}
